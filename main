@@ -1,0 +1,350 @@
+$gtk.reset
+attr_gtk
+
+class Window
+    attr_accessor :x, :y, :w, :h,
+                  :elements
+
+    def initialize args, x, y, w, h
+        @args = args
+        @x = x
+        @y = y
+        @w = w
+        @h = h
+
+        @elements = []
+    end
+
+    def add element
+        element.parent = self
+        @elements << element
+    end
+
+    def draw
+        args.outputs.primitives << { x: @x*args.state.pixel_s, y: @y*args.state.pixel_s, w: @w*args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/dark.png" }
+
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: (@y-1)*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: @y*args.state.pixel_s+@h*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: @y*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s+@w*args.state.pixel_s, y: @y*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+
+        @elements.each do |element|
+            element.draw
+        end
+    end
+end
+
+class Button
+    attr_accessor :x, :y,
+                  :text, :parent
+
+    def initialize args, x, y, text
+        @args = args
+        @x = x
+        @y = y
+
+        @text = text
+        @parent = nil
+    end
+
+    def clicked_on?
+        return unless inputs.mouse.click
+        return inputs.mouse.point.inside_rect?({x:(@parent.x+@x)*args.state.pixel_s,y:(@parent.y+@y)*args.state.pixel_s,w:8*text.length*args.state.pixel_s,h:10*args.state.pixel_s})
+    end
+
+    def left_of element, offset = element.text.length/2
+        @x = element.x - 8 - offset*8
+    end
+
+    def right_of element, offset = element.text.length/2
+        @x = element.x + offset*8
+    end
+
+    def draw
+        (@text.upcase).split('').each_with_index do |char, i|
+            outputs.primitives << { x: (@parent.x+@x+i*8)*args.state.pixel_s, y: (@parent.y+@y)*args.state.pixel_s, w: 8*args.state.pixel_s, h: 10*args.state.pixel_s, source_x: (char.ord()-32)*8, source_y: 0, source_w: 8, source_h: 10, path: "sprites/menu_resources/letters.png" }.sprite
+        end
+    end
+end
+
+class Label
+    attr_accessor :x, :y,
+                  :text, :parent
+
+    def initialize args, x, y, text, center_x = true
+        @args = args
+        @x = x
+        @y = y
+
+        @center_x = center_x
+
+        @text = text
+        @parent = nil
+    end
+
+    def draw
+        x = @x
+        if @center_x
+            x -= (text.length*8)/2
+        end
+
+        y = @y
+
+        (@text.upcase).split('').each_with_index do |char, i|
+            outputs.primitives << { x: (@parent.x+x+i*8)*args.state.pixel_s, y: (@parent.y+y)*args.state.pixel_s, w: 8*args.state.pixel_s, h: 10*args.state.pixel_s, source_x: (char.ord()-32)*8, source_y: 0, source_w: 8, source_h: 10, path: "sprites/menu_resources/letters.png" }.sprite
+        end
+    end
+end
+
+class List
+    attr_accessor :x, :y, :w, :h,
+                  :elements, :highlighted, :parent
+
+    def initialize args, x, y, w, h, center_x = true
+        @args = args
+        @x = x
+        @y = y
+        @w = w
+        @h = h
+
+        @center_x = center_x
+
+        @elements = []
+        @current_elements = []
+
+        @highlighted = {name:"", type:"", amount:0, tooltip:""}
+
+        @parent = nil
+    end
+
+    def add_element element
+        element[:selected] = false
+        @elements << element
+    end
+
+    def deselect_all
+        @elements.each_with_index do |element, j|
+            element[:selected] = false
+        end
+    end
+
+    def clear
+        @elements = []
+    end
+
+    def update_current_elements type
+        @current_elements = []
+        @elements.each do |element|
+            if element[:type] == type
+                @current_elements << element
+            end
+        end
+    end
+
+    def mouse_over?
+        @current_elements.each_with_index do |element, j|
+            if inputs.mouse.point.inside_rect?({x: (@parent.x+@x)*args.state.pixel_s, y: (@h-10+@parent.y+@y-14*j)*args.state.pixel_s, w: @w*args.state.pixel_s, h: 10*args.state.pixel_s})
+
+                outputs.primitives << {x: (@parent.x+@x-4)*args.state.pixel_s, y: (@h-10-3+@parent.y+@y-14*j)*args.state.pixel_s, w: (@w+8)*args.state.pixel_s, h: (10+6)*args.state.pixel_s, path: "sprites/menu_resources/item_select.png", r:100, g:100, b:100 }.sprite
+
+                if inputs.mouse.click
+                    deselect_all
+                    element[:selected] = true
+                    @highlighted = element
+                end
+            end
+
+            if (element[:selected])
+                outputs.primitives << {x: (@parent.x+@x-4)*args.state.pixel_s, y: (@h-10-3+@parent.y+@y-14*j)*args.state.pixel_s, w: (@w+8)*args.state.pixel_s, h: (10+6)*args.state.pixel_s, path: "sprites/menu_resources/item_select.png"}.sprite
+            end
+        end
+    end
+
+    def draw
+        if @center_x
+            @x = @parent.w/2 - @w/2
+        end
+
+        @current_elements.each_with_index do |element, j|
+            ("#{element[:name]}".upcase).split('').each_with_index do |char, i|
+                outputs.primitives << { x: (@parent.x+@x+i*8)*args.state.pixel_s, y: (@h-10+@parent.y+@y-14*j)*args.state.pixel_s, w: 8*args.state.pixel_s, h: 10*args.state.pixel_s, source_x: (char.ord()-32)*8, source_y: 0, source_w: 8, source_h: 10, path: "sprites/menu_resources/letters.png" }.sprite
+            end
+
+            ("[#{"%03d" % element[:amount]}".upcase).split('').each_with_index do |char, i|
+                outputs.primitives << { x: (@w-@parent.x+@x+i*8)*args.state.pixel_s, y: (@h-10+@parent.y+@y-14*j)*args.state.pixel_s, w: 8*args.state.pixel_s, h: 10*args.state.pixel_s, source_x: (char.ord()-32)*8, source_y: 0, source_w: 8, source_h: 10, path: "sprites/menu_resources/letters.png" }.sprite
+            end
+        end
+
+        mouse_over?
+    end
+end
+
+class Textbox
+    attr_accessor :x, :y, :w, :h,
+                  :text, :parent
+
+    def initialize args, x, y, w, h, text
+        @args = args
+        @x = x
+        @y = y
+        @w = w
+        @h = h
+
+        @text = text
+        @parsed_text = []
+        @text_size = 3
+
+        @parent = nil
+
+    end
+
+    def update_text text
+        @text = text
+    end
+
+    def parse_textbox
+        if @text == ""
+            return []
+        end
+        parsed = []
+
+        line_w = 0
+        word_w = 0
+        current_word = ""
+        current_line = ""
+
+        txt = @text += " "
+        (txt.upcase).split('').each do |char|
+            if (char == ' ')
+                if ((line_w + word_w)*@text_size > (@w*args.state.pixel_s))
+                    parsed << current_line
+                    current_line = ""
+                    line_w = 0
+                end
+                current_line += current_word
+                line_w += word_w
+                word_w = 0
+                current_word = ""
+            end
+            current_word += char
+            word_w += 8
+            if current_line[0] == ' '
+                current_line = current_line[1..-1]
+            end
+        end
+        parsed << current_line
+        @parsed_text = parsed
+    end
+
+    def draw
+        args.outputs.primitives << { x: (@x+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: @w*args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/dark.png" }
+
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y-1+@parent.y)*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s+@h*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s+@w*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        
+        return if @text == ""
+        parse_textbox
+        @parsed_text.each_with_index do |line, j|
+            line.split('').each_with_index do |char, i|
+                outputs.primitives << { x: (2+@parent.x+x)*args.state.pixel_s+(i*8)*@text_size, y: (@h+@parent.y+y)*args.state.pixel_s+(-(j+1)*12)*@text_size, w: 8*@text_size, h: 10*@text_size, source_x: (char.ord()-32)*8, source_y: 0, source_w: 8, source_h: 10, path: "sprites/menu_resources/letters.png" }.sprite
+            end
+        end
+
+    end
+end
+
+class PictureBox
+    attr_accessor :x, :y, :w, :h,
+                  :path, :parent
+
+    def initialize args, x, y, w, h, path
+        @args = args
+        @x = x
+        @y = y
+        @w = w
+        @h = h
+
+        @path = path
+
+        @parent = nil
+
+    end
+
+    def draw
+        
+    end
+end
+
+def defaults args
+    args.state.pixel_s = 4
+
+    args.state.win = Window.new(args, 16, 20, 16*14, 16*9)
+
+    args.state.menu_name = Label.new(args, 16*7, 125, "weapons")
+    args.state.win.add(args.state.menu_name)
+
+    args.state.left_button = Button.new(args, 0, 125, "<")
+    args.state.win.add(args.state.left_button)
+    args.state.left_button.left_of args.state.menu_name, 6
+
+    args.state.right_button = Button.new(args, 0, 125, ">")
+    args.state.win.add(args.state.right_button)
+    args.state.right_button.right_of args.state.menu_name, 6
+
+
+    args.state.item_inspect = Textbox.new(args, 0, 0, 16*14, 16*3+1, "")
+    args.state.win.add(args.state.item_inspect)
+
+
+
+
+    args.state.menu_names = ["weapons","consumables","equipables","quest items","misc"]
+
+
+    args.state.list = List.new(args, 0, 20, 200, 100)
+    args.state.win.add(args.state.list)
+    args.state.list.add_element({name:"onion", type:"consumables", amount:5, tooltip:""})
+    args.state.list.add_element({name:"health potion", type:"consumables", amount:1, tooltip:""})
+    args.state.list.add_element({name:"potato soup", type:"consumables", amount:2, tooltip:"Kotas favourite!"})
+
+    args.state.list.add_element({name:"sword", type:"weapons", amount:1, tooltip:""})
+    args.state.list.add_element({name:"axe", type:"weapons", amount:2, tooltip:""})
+    args.state.list.add_element({name:"bomb", type:"weapons", amount:20, tooltip:""})
+    args.state.list.add_element({name:"arrow", type:"weapons", amount:999, tooltip:""})
+
+    args.state.list.add_element({name:"iron helm", type:"equipables", amount:1, tooltip:""})
+    args.state.list.add_element({name:"iron chestpiece", type:"equipables", amount:1, tooltip:""})
+    args.state.list.add_element({name:"iron legs", type:"equipables", amount:1, tooltip:"hollowed out for your benifit"})
+    args.state.list.add_element({name:"iron boots", type:"equipables", amount:1, tooltip:""})
+    args.state.list.add_element({name:"enchanted necklace", type:"equipables", amount:1, tooltip:"test test test test test test test test test 123456789 test test test test test test test"})
+
+    args.state.list.update_current_elements args.state.menu_name.text
+end
+
+def click_events args
+    if args.state.left_button.clicked_on?
+
+        args.state.menu_name.text = args.state.menu_names[args.state.menu_names.index(args.state.menu_name.text)-1]
+        args.state.list.update_current_elements args.state.menu_name.text
+    end
+
+    if args.state.right_button.clicked_on?
+
+        args.state.menu_name.text = args.state.menu_names[args.state.menu_names.index(args.state.menu_name.text)+1-args.state.menu_names.length]
+        args.state.list.update_current_elements args.state.menu_name.text
+    end
+
+    args.state.item_inspect.update_text args.state.list.highlighted[:tooltip]
+end
+
+def tick args
+    defaults args if args.state.tick_count == 0
+    args.outputs.background_color = [100,100,100]
+
+    args.state.win.draw
+    click_events args
+
+    args.outputs.labels << [1270, 710, args.gtk.current_framerate.round(1), 0, 2, 255, 0, 0]
+end

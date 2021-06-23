@@ -21,12 +21,12 @@ class Window
     end
 
     def draw
-        args.outputs.primitives << { x: @x*args.state.pixel_s, y: @y*args.state.pixel_s, w: @w*args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/dark.png" }
+        args.outputs.primitives << { x: @x*args.state.pixel_s, y: @y*args.state.pixel_s, w: @w*args.state.pixel_s, h: @h*args.state.pixel_s, r:0, g:0, b:81 }.solid
 
-        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: (@y-1)*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
-        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: @y*args.state.pixel_s+@h*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
-        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: @y*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
-        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s+@w*args.state.pixel_s, y: @y*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: (@y-1)*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, r:98, g:218, b:219 }.solid
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: @y*args.state.pixel_s+@h*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, r:98, g:218, b:219 }.solid
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s, y: @y*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, r:98, g:218, b:219 }.solid
+        args.outputs.primitives << { x: (@x-1)*args.state.pixel_s+@w*args.state.pixel_s, y: @y*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, r:98, g:218, b:219 }.solid
 
         @elements.each do |element|
             element.draw
@@ -36,7 +36,7 @@ end
 
 class Button
     attr_accessor :x, :y,
-                  :text, :parent
+                  :text, :keybinds, :parent
 
     def initialize args, x, y, text
         @args = args
@@ -44,12 +44,18 @@ class Button
         @y = y
 
         @text = text
+        @keybinds = []
         @parent = nil
     end
-
+    
     def clicked_on?
         return unless inputs.mouse.click
         return inputs.mouse.point.inside_rect?({x:(@parent.x+@x)*args.state.pixel_s,y:(@parent.y+@y)*args.state.pixel_s,w:8*text.length*args.state.pixel_s,h:10*args.state.pixel_s})
+    end
+
+    def keybind_pressed?
+        return unless args.inputs.keyboard.truthy_keys.length > 0
+        return args.inputs.keyboard.key_down.any? @keybinds
     end
 
     def left_of element, offset = element.text.length/2
@@ -58,6 +64,10 @@ class Button
 
     def right_of element, offset = element.text.length/2
         @x = element.x + offset*8
+    end
+
+    def set_keybind key_symbol
+        @keybinds << key_symbol
     end
 
     def draw
@@ -142,6 +152,7 @@ class List
     end
 
     def mouse_over?
+        flag = false
         @current_elements.each_with_index do |element, j|
             if inputs.mouse.point.inside_rect?({x: (@parent.x+@x)*args.state.pixel_s, y: (@h-10+@parent.y+@y-14*j)*args.state.pixel_s, w: @w*args.state.pixel_s, h: 10*args.state.pixel_s})
 
@@ -155,9 +166,17 @@ class List
             end
 
             if (element[:selected])
+                flag = true
                 outputs.primitives << {x: (@parent.x+@x-4)*args.state.pixel_s, y: (@h-10-3+@parent.y+@y-14*j)*args.state.pixel_s, w: (@w+8)*args.state.pixel_s, h: (10+6)*args.state.pixel_s, path: "sprites/menu_resources/item_select.png"}.sprite
             end
         end
+        if flag == false && @current_elements.length > 0
+            @current_elements[0][:selected] = true
+        end
+    end
+
+    def element_selected?
+        
     end
 
     def draw
@@ -183,7 +202,7 @@ class Textbox
     attr_accessor :x, :y, :w, :h,
                   :text, :parent
 
-    def initialize args, x, y, w, h, text
+    def initialize args, x, y, w, h, text = ""
         @args = args
         @x = x
         @y = y
@@ -237,12 +256,12 @@ class Textbox
     end
 
     def draw
-        args.outputs.primitives << { x: (@x+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: @w*args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/dark.png" }
+        args.outputs.primitives << { x: (@x+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: @w*args.state.pixel_s, h: @h*args.state.pixel_s, r:0, g:0, b:81 }.solid
 
-        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y-1+@parent.y)*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
-        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s+@h*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
-        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
-        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s+@w*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, path: "sprites/menu_resources/colours/light.png" }
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y-1+@parent.y)*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, r:98, g:218, b:219 }.solid
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s+@h*args.state.pixel_s, w: (@w+1)*args.state.pixel_s, h: args.state.pixel_s, r:98, g:218, b:219 }.solid
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, r:98, g:218, b:219 }.solid
+        args.outputs.primitives << { x: (@x-1+@parent.x)*args.state.pixel_s+@w*args.state.pixel_s, y: (@y+@parent.y)*args.state.pixel_s, w: args.state.pixel_s, h: @h*args.state.pixel_s, r:98, g:218, b:219 }.solid
         
         return if @text == ""
         parse_textbox
@@ -288,13 +307,15 @@ def defaults args
     args.state.left_button = Button.new(args, 0, 125, "<")
     args.state.win.add(args.state.left_button)
     args.state.left_button.left_of args.state.menu_name, 6
+    args.state.left_button.set_keybind :left
 
     args.state.right_button = Button.new(args, 0, 125, ">")
     args.state.win.add(args.state.right_button)
     args.state.right_button.right_of args.state.menu_name, 6
+    args.state.left_button.set_keybind :right
 
 
-    args.state.item_inspect = Textbox.new(args, 0, 0, 16*14, 16*3+1, "")
+    args.state.item_inspect = Textbox.new(args, 0, 0, 16*14, 16*3+1)
     args.state.win.add(args.state.item_inspect)
 
 
@@ -324,13 +345,13 @@ def defaults args
 end
 
 def click_events args
-    if args.state.left_button.clicked_on?
+    if args.state.left_button.clicked_on? || args.state.left_button.keybind_pressed?
 
         args.state.menu_name.text = args.state.menu_names[args.state.menu_names.index(args.state.menu_name.text)-1]
         args.state.list.update_current_elements args.state.menu_name.text
     end
 
-    if args.state.right_button.clicked_on?
+    if args.state.right_button.clicked_on? || args.state.right_button.keybind_pressed?
 
         args.state.menu_name.text = args.state.menu_names[args.state.menu_names.index(args.state.menu_name.text)+1-args.state.menu_names.length]
         args.state.list.update_current_elements args.state.menu_name.text
